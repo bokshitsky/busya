@@ -88,6 +88,5 @@ _STAGE_ASK: dict[Stage, str] = {
 def stage_prompt(stage: Stage, context: str, *, handoff_hint: str) -> str:
     """Build the user-turn prompt for one stage run."""
     parts = [context, f"# Your job\n{_STAGE_ASK[stage]}"]
-    if handoff_hint:
-        parts.append(handoff_hint)
+    parts.append(handoff_hint)
     return "\n\n".join(parts)

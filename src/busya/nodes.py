@@ -42,13 +42,12 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
         server, tool_name = build_handoff_server(stage, slot)
         mcp_servers: dict[str, McpServerConfig] = {SERVER_NAME: server}
         tools.append(tool_name)
-        hint = handoff_hint(stage)
 
         logger.info("stage %s: starting", stage.value)
         result = await run_assistant(
             AssistantSpec(
                 system_prompt=SYSTEM_PROMPTS[stage],
-                prompt=stage_prompt(stage, context_block(state, exclude=stage), handoff_hint=hint),
+                prompt=stage_prompt(stage, context_block(state, exclude=stage), handoff_hint=handoff_hint(stage)),
                 tools=tools,
                 mcp_servers=mcp_servers,
                 model=config.model,

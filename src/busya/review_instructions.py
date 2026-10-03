@@ -10,7 +10,10 @@ def load_review_instructions(paths: list[Path]) -> str:
     sections = []
     for path in paths:
         for file in _files(path):
-            text = file.read_text(encoding="utf-8", errors="replace").strip()
+            try:
+                text = file.read_text(encoding="utf-8").strip()
+            except UnicodeDecodeError:
+                continue
             if text:
                 sections.append(f"## {file}\n{text}")
     if not sections:
@@ -19,7 +22,11 @@ def load_review_instructions(paths: list[Path]) -> str:
 
 
 def _files(path: Path) -> list[Path]:
-    """`path` itself if it's a file, or every file under it if it's a directory."""
+    """`path` itself if it's a file, or every non-hidden file under it if it's a directory."""
     if path.is_dir():
-        return sorted(p for p in path.rglob("*") if p.is_file())
+        return sorted(
+            p
+            for p in path.rglob("*")
+            if p.is_file() and not any(part.startswith(".") for part in p.relative_to(path).parts)
+        )
     return [path]

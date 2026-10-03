@@ -41,8 +41,6 @@ def summarize(state: PipelineState) -> str:
         total_tokens += tokens
         handoff = f" -> {record.handoff.target.value}" if record.handoff else ""
         flag = " [error]" if record.is_error else ""
-        lines.append(
-            f"{index}. {record.stage.value}{handoff}: {record.num_turns} turns, {cost}, {tokens} tokens{flag}"
-        )
+        lines.append(f"{index}. {record.stage.value}{handoff}: {record.num_turns} turns, {cost}, {tokens} tokens{flag}")
     lines.append(f"total: ${total_cost:.4f}, {total_tokens} tokens")
     return "\n".join(lines)

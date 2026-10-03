@@ -35,14 +35,13 @@ def build_review_comment_server(slot: ReviewCommentSlot) -> tuple[McpSdkServerCo
     async def add_comment(args: dict[str, Any]) -> dict[str, Any]:
         file = str(args.get("file", "")).strip()
         comment = str(args.get("comment", "")).strip()
-        try:
-            line = int(args.get("line", 0))
-        except (TypeError, ValueError):
-            return _error("`line` must be an integer.")
+        raw_line = args.get("line")
+        if not isinstance(raw_line, int) or isinstance(raw_line, bool) or raw_line < 1:
+            return _error("`line` must be a positive integer.")
         if not file or not comment:
             return _error("`file` and `comment` are required.")
-        slot.comments.append(ReviewComment(file=file, line=line, comment=comment))
-        return {"content": [{"type": "text", "text": f"Comment recorded for {file}:{line}."}]}
+        slot.comments.append(ReviewComment(file=file, line=raw_line, comment=comment))
+        return {"content": [{"type": "text", "text": f"Comment recorded for {file}:{raw_line}."}]}
 
     return create_sdk_mcp_server(SERVER_NAME, tools=[add_comment]), TOOL_NAME
 

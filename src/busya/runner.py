@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import cast
 
 from .config import PipelineConfig
@@ -12,8 +11,6 @@ from .state import PipelineState
 
 async def run_pipeline(task: str, config: PipelineConfig) -> PipelineState:
     """Run all four stages on `task` and return the final state."""
-    if config.cwd is None:
-        config.cwd = Path.cwd()
     graph = build_graph(config)
     initial: PipelineState = {"task": task, "history": []}
     # recursion_limit bounds graph steps; stage runs are capped separately.

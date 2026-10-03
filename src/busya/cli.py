@@ -60,7 +60,7 @@ def run(
         llm_orchestrator=llm_orchestrator,
         model=model,
         orchestrator_model=orchestrator_model,
-        cwd=cwd,
+        cwd=cwd if cwd is not None else Path.cwd(),
         max_review_rounds=max_review_rounds,
         max_stage_runs=max_stage_runs,
     )

@@ -36,29 +36,6 @@ cat task.md | uv run busya
 CLI на [typer](https://typer.tiangolo.com/), булевы флаги имеют парные
 `--no-*` формы.
 
-Из кода:
-
-```python
-from busya.config import PipelineConfig, RoutingMode
-from busya.runner import run_pipeline, summarize
-
-config = PipelineConfig(
-    routing=RoutingMode.ASSISTANT,
-    model=None,
-    orchestrator_model=None,
-    llm_orchestrator=False,
-    cwd=None,
-    max_review_rounds=2,
-    max_stage_runs=12,
-)
-state = await run_pipeline("Добавь ручку /health", config)
-print(state["review"])
-print(summarize(state))
-```
-
-`PipelineConfig` требует все поля, кроме `max_turns` и `permission_mode`:
-значения по умолчанию живут в CLI, чтобы не задавать их в двух местах.
-
 ## Два способа перехода между этапами
 
 **1. Решает оркестратор** (`--routing orchestrator`, по умолчанию).

@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .config import PipelineConfig, RoutingMode
+from .config import PipelineConfig
 from .nodes import build_stage_node
 from .orchestrator import Orchestrator, build_orchestrator
 from .state import ALLOWED_TARGETS, WORK_STAGES, PipelineState, Stage
@@ -22,32 +22,23 @@ Pipeline = CompiledStateGraph[PipelineState, None, PipelineState, PipelineState]
 def build_graph(config: PipelineConfig) -> Pipeline:
     """Compile the pipeline.
 
-    The two routing modes produce structurally different graphs:
-
-    - `orchestrator`: every stage has a conditional edge, and the orchestrator
-      decides which way it goes once the stage is finished.
-    - `assistant`: stages have no outgoing edges — each one returns a `Command`
-      carrying the target its own assistant chose via the handoff tool.
+    Each stage assistant gets a `handoff` tool and may route itself: if it
+    calls it, the node returns a `Command` that goes straight to the chosen
+    target, taking priority over everything else. If it doesn't, the node
+    just records its output and a conditional edge asks the orchestrator
+    where to go instead.
     """
     builder = StateGraph[PipelineState, None, PipelineState, PipelineState](PipelineState)
+    orchestrator = build_orchestrator(config)
 
-    self_routing = config.routing is RoutingMode.ASSISTANT
     for stage in WORK_STAGES:
-        builder.add_node(
-            stage.value,
-            build_stage_node(stage, config),
-            # Only meaningful for self-routing nodes, which carry no edges —
-            # it tells LangGraph where their Commands can send control.
-            destinations=_destinations(stage) if self_routing else None,
-        )
+        builder.add_node(stage.value, build_stage_node(stage, config), destinations=_destinations(stage))
 
     builder.add_edge(START, Stage.REQUIREMENTS.value)
 
-    if not self_routing:
-        orchestrator = build_orchestrator(config)
-        for stage in WORK_STAGES:
-            edges: dict[Hashable, str] = {key: value for key, value in _destinations(stage).items()}
-            builder.add_conditional_edges(stage.value, _build_router(stage, config, orchestrator), edges)
+    for stage in WORK_STAGES:
+        edges: dict[Hashable, str] = {key: value for key, value in _destinations(stage).items()}
+        builder.add_conditional_edges(stage.value, _build_router(stage, config, orchestrator), edges)
 
     return builder.compile()
 

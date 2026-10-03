@@ -10,7 +10,7 @@ from typing import Annotated
 
 import typer
 
-from .config import PipelineConfig, RoutingMode
+from .config import PipelineConfig
 from .runner import run_pipeline, summarize
 from .state import ARTIFACT_KEY, WORK_STAGES
 
@@ -23,7 +23,6 @@ app = typer.Typer(
 @app.command()
 def run(
     task: Annotated[str | None, typer.Argument(help="What to build. Omit to read it from stdin.")] = None,
-    routing: Annotated[RoutingMode, typer.Option(help="Who picks the next stage.")] = RoutingMode.ORCHESTRATOR,
     llm_orchestrator: Annotated[bool, typer.Option(help="Let an assistant make the orchestrator's decisions.")] = False,
     model: Annotated[str | None, typer.Option(help="Model for the stage assistants.")] = None,
     orchestrator_model: Annotated[str | None, typer.Option(help="Model for the LLM orchestrator.")] = None,
@@ -56,7 +55,6 @@ def run(
     )
 
     config = PipelineConfig(
-        routing=routing,
         llm_orchestrator=llm_orchestrator,
         model=model,
         orchestrator_model=orchestrator_model,

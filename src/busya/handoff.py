@@ -55,12 +55,12 @@ def _error(message: str) -> dict[str, Any]:
 
 
 def handoff_hint(source: Stage) -> str:
-    """Prompt text telling the assistant it owns the routing decision."""
+    """Prompt text telling the assistant it can make the routing decision itself."""
     targets = ALLOWED_TARGETS[source]
     lines = "\n".join(f"- {t.value}" for t in targets)
     return (
         "# Routing\n"
-        "You decide where control goes next. After writing your final report, call "
+        "You may decide where control goes next. After writing your final report, call "
         f"the `handoff` tool exactly once with one of these targets:\n{lines}\n"
-        "Give a one-sentence reason. If you do not call it, the pipeline stops here."
+        "Give a one-sentence reason. If you do not call it, an orchestrator decides instead."
     )

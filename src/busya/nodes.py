@@ -11,7 +11,7 @@ from langgraph.graph import END
 from langgraph.types import Command
 
 from .assistant import AssistantSpec, run_assistant
-from .config import PipelineConfig, RoutingMode
+from .config import PipelineConfig
 from .handoff import SERVER_NAME, HandoffSlot, build_handoff_server, handoff_hint
 from .prompts import SYSTEM_PROMPTS, stage_prompt
 from .state import ARTIFACT_KEY, PipelineState, Stage, StageRecord, context_block
@@ -30,23 +30,19 @@ class StageNode(Protocol):
 def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
     """Build the node that runs one stage's assistant.
 
-    In `assistant` routing mode the node hands the assistant a `handoff` tool and
-    then obeys whatever it asked for. In `orchestrator` mode the node only
-    records its output; a conditional edge decides where control goes.
+    The assistant gets a `handoff` tool and can route itself; if it calls it,
+    that decision wins and the node returns a `Command(goto=...)`. If it
+    doesn't, the node just records its output and a conditional edge asks the
+    orchestrator where to go instead.
     """
-    self_routing = config.routing is RoutingMode.ASSISTANT
 
     async def node(state: PipelineState) -> NodeReturn:
         slot = HandoffSlot()
         tools = config.tools_for(stage)
-        mcp_servers: dict[str, McpServerConfig] = {}
-        hint = ""
-
-        if self_routing:
-            server, tool_name = build_handoff_server(stage, slot)
-            mcp_servers[SERVER_NAME] = server
-            tools.append(tool_name)
-            hint = handoff_hint(stage)
+        server, tool_name = build_handoff_server(stage, slot)
+        mcp_servers: dict[str, McpServerConfig] = {SERVER_NAME: server}
+        tools.append(tool_name)
+        hint = handoff_hint(stage)
 
         logger.info("stage %s: starting", stage.value)
         result = await run_assistant(
@@ -80,7 +76,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
         update: PipelineState = {"history": [record], "handoff": slot.request}
         update[ARTIFACT_KEY[stage]] = result.text  # type: ignore[literal-required]
 
-        if not self_routing:
+        if slot.request is None:
             return update
         return Command(update=update, goto=_self_route(stage, state, slot, config))
 
@@ -90,11 +86,9 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
 
 def _self_route(stage: Stage, state: PipelineState, slot: HandoffSlot, config: PipelineConfig) -> str:
     """Turn the assistant's own handoff call into a graph destination."""
+    assert slot.request is not None
     if len(state.get("history", [])) + 1 >= config.max_stage_runs:
         logger.warning("stage-run cap reached after %s; stopping", stage.value)
-        return END
-    if slot.request is None:
-        logger.warning("stage %s did not call handoff; stopping", stage.value)
         return END
     target = slot.request.target
     logger.info(

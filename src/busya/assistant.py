@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from claude_agent_sdk import (
     ToolUseBlock,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(slots=True)
 class AssistantSpec:
@@ -27,6 +30,8 @@ class AssistantSpec:
     #: None uses the CLI's own default model.
     model: str | None
     max_turns: int
+    #: Prefix for the per-message progress logs (e.g. the stage name).
+    label: str
     mcp_servers: dict[str, McpServerConfig] = field(default_factory=dict)
     cwd: Path | None = None
     permission_mode: PermissionMode = "acceptEdits"
@@ -70,8 +75,10 @@ async def run_assistant(spec: AssistantSpec) -> AssistantResult:
                 for block in message.content:
                     if isinstance(block, TextBlock):
                         texts.append(block.text)
+                        logger.info("%s: %s", spec.label, _preview(block.text))
                     elif isinstance(block, ToolUseBlock):
                         tool_calls.append(block.name)
+                        logger.info("%s: tool %s", spec.label, block.name)
             elif isinstance(message, ResultMessage):
                 result = message
 
@@ -84,3 +91,9 @@ async def run_assistant(spec: AssistantSpec) -> AssistantResult:
         is_error=bool(result and result.is_error),
         terminal_reason=result.terminal_reason if result else None,
     )
+
+
+def _preview(text: str, limit: int = 160) -> str:
+    """Collapse `text` to one line, truncated for a progress log."""
+    collapsed = " ".join(text.split())
+    return collapsed if len(collapsed) <= limit else f"{collapsed[: limit - 1]}…"

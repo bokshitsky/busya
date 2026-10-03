@@ -52,6 +52,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
                 mcp_servers=mcp_servers,
                 model=config.model,
                 max_turns=config.max_turns[stage],
+                label=stage.value,
                 cwd=config.cwd,
                 permission_mode=config.permission_mode,
             )

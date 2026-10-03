@@ -77,6 +77,7 @@ class LLMOrchestrator:
                 tools=[],
                 model=self._config.orchestrator_model or self._config.model,
                 max_turns=1,
+                label="orchestrator",
             )
         )
 

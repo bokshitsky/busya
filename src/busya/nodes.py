@@ -11,7 +11,7 @@ from langgraph.graph import END
 from langgraph.types import Command
 
 from .assistant import AssistantSpec, run_assistant
-from .config import PipelineConfig
+from .config import PipelineConfig, RoutingMode
 from .handoff import SERVER_NAME, HandoffSlot, build_handoff_server, handoff_hint
 from .prompts import SYSTEM_PROMPTS, stage_prompt
 from .state import ARTIFACT_KEY, PipelineState, Stage, StageRecord, context_block
@@ -34,7 +34,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
     then obeys whatever it asked for. In `orchestrator` mode the node only
     records its output; a conditional edge decides where control goes.
     """
-    self_routing = config.routing == "assistant"
+    self_routing = config.routing is RoutingMode.ASSISTANT
 
     async def node(state: PipelineState) -> NodeReturn:
         slot = HandoffSlot()

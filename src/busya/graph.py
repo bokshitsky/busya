@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .config import PipelineConfig
+from .config import PipelineConfig, RoutingMode
 from .nodes import build_stage_node
 from .orchestrator import Orchestrator, build_orchestrator
 from .state import ALLOWED_TARGETS, WORK_STAGES, PipelineState, Stage
@@ -34,7 +34,7 @@ def build_graph(config: PipelineConfig | None = None) -> Pipeline:
         PipelineState
     )
 
-    self_routing = config.routing == "assistant"
+    self_routing = config.routing is RoutingMode.ASSISTANT
     for stage in WORK_STAGES:
         builder.add_node(
             stage.value,

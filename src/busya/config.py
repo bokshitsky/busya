@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
-from typing import Literal
 
 from claude_agent_sdk import PermissionMode
 
 from .state import Stage
 
-#: How control moves between nodes.
-#:   "orchestrator" — the graph decides after each stage finishes.
-#:   "assistant"    — each stage's assistant calls the handoff tool itself.
-RoutingMode = Literal["orchestrator", "assistant"]
+
+class RoutingMode(StrEnum):
+    """How control moves between nodes."""
+
+    #: The graph asks the orchestrator after each stage finishes.
+    ORCHESTRATOR = "orchestrator"
+    #: Each stage's assistant calls the handoff tool itself.
+    ASSISTANT = "assistant"
+
 
 _READ_ONLY = ["Read", "Glob", "Grep"]
 
@@ -30,7 +35,7 @@ STAGE_TOOLS: dict[Stage, list[str]] = {
 class PipelineConfig:
     """Knobs for one pipeline run."""
 
-    routing: RoutingMode = "orchestrator"
+    routing: RoutingMode = RoutingMode.ORCHESTRATOR
     #: Model for stage assistants; None uses the CLI default.
     model: str | None = None
     #: Model for the LLM orchestrator, when one is used.

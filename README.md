@@ -33,13 +33,17 @@ cat task.md | uv run busya
 
 Полезные флаги: `--model`, `--llm-orchestrator`, `--max-review-rounds`,
 `--max-stage-runs`, `-v`. Весь список — `uv run busya --help`.
+CLI на [typer](https://typer.tiangolo.com/), булевы флаги имеют парные
+`--no-*` формы.
 
 Из кода:
 
 ```python
-from busya import PipelineConfig, run_pipeline, summarize
+from busya import PipelineConfig, RoutingMode, run_pipeline, summarize
 
-state = await run_pipeline("Добавь ручку /health", PipelineConfig(routing="assistant"))
+state = await run_pipeline(
+    "Добавь ручку /health", PipelineConfig(routing=RoutingMode.ASSISTANT)
+)
 print(state["review"])
 print(summarize(state))
 ```
@@ -100,7 +104,7 @@ print(summarize(state))
 | `orchestrator.py` | `RulesOrchestrator`, `LLMOrchestrator` |
 | `graph.py` | сборка графа под выбранный режим переходов |
 | `runner.py` | прогон пайплайна и сводка по стоимости |
-| `cli.py` | разбор аргументов |
+| `cli.py` | typer-приложение |
 
 ## Ограничители
 

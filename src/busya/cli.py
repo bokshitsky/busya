@@ -2,93 +2,104 @@
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Annotated
 
-from .config import PipelineConfig
+import typer
+
+from .config import PipelineConfig, RoutingMode
 from .runner import run_pipeline, summarize
 from .state import ARTIFACT_KEY, WORK_STAGES
 
-
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        prog="busya", description="Four-stage coding agent on LangGraph."
-    )
-    parser.add_argument("task", nargs="?", help="what to build; omit to read stdin")
-    parser.add_argument(
-        "--routing",
-        choices=["orchestrator", "assistant"],
-        default="orchestrator",
-        help="who picks the next stage (default: orchestrator)",
-    )
-    parser.add_argument(
-        "--llm-orchestrator",
-        action="store_true",
-        help="let an assistant make the orchestrator's decisions",
-    )
-    parser.add_argument("--model", help="model for the stage assistants")
-    parser.add_argument("--orchestrator-model", help="model for the LLM orchestrator")
-    parser.add_argument(
-        "--cwd", type=Path, help="directory the assistants work in (default: .)"
-    )
-    parser.add_argument(
-        "--max-review-rounds",
-        type=int,
-        default=2,
-        help="coding/review loops before finishing anyway (default: 2)",
-    )
-    parser.add_argument(
-        "--max-stage-runs",
-        type=int,
-        default=12,
-        help="hard cap on total stage runs (default: 12)",
-    )
-    parser.add_argument(
-        "--show",
-        action="store_true",
-        help="print every stage artifact, not just the summary",
-    )
-    parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
-    return parser.parse_args(argv)
+app = typer.Typer(
+    add_completion=False,
+    help="Four-stage coding agent on LangGraph: "
+    "requirements, planning, coding, review.",
+)
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv)
-    task = args.task or sys.stdin.read()
-    if not task.strip():
-        print("busya: no task given", file=sys.stderr)
-        return 2
+@app.command()
+def run(
+    task: Annotated[
+        str | None, typer.Argument(help="What to build. Omit to read it from stdin.")
+    ] = None,
+    routing: Annotated[
+        RoutingMode, typer.Option(help="Who picks the next stage.")
+    ] = RoutingMode.ORCHESTRATOR,
+    llm_orchestrator: Annotated[
+        bool, typer.Option(help="Let an assistant make the orchestrator's decisions.")
+    ] = False,
+    model: Annotated[
+        str | None, typer.Option(help="Model for the stage assistants.")
+    ] = None,
+    orchestrator_model: Annotated[
+        str | None, typer.Option(help="Model for the LLM orchestrator.")
+    ] = None,
+    cwd: Annotated[
+        Path | None,
+        typer.Option(
+            help="Directory the assistants work in.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+        ),
+    ] = None,
+    max_review_rounds: Annotated[
+        int,
+        typer.Option(min=1, help="Coding/review loops before finishing anyway."),
+    ] = 2,
+    max_stage_runs: Annotated[
+        int, typer.Option(min=1, help="Hard cap on total stage runs.")
+    ] = 12,
+    show: Annotated[
+        bool, typer.Option(help="Print every stage artifact, not just the summary.")
+    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Debug logging.")] = (
+        False
+    ),
+) -> None:
+    """Run the pipeline on a task."""
+    text = task if task is not None else sys.stdin.read()
+    if not text.strip():
+        typer.echo("busya: no task given", err=True)
+        raise typer.Exit(code=2)
 
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        level=logging.DEBUG if verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
     )
 
     config = PipelineConfig(
-        routing=args.routing,
-        llm_orchestrator=args.llm_orchestrator,
-        model=args.model,
-        orchestrator_model=args.orchestrator_model,
-        cwd=args.cwd,
-        max_review_rounds=args.max_review_rounds,
-        max_stage_runs=args.max_stage_runs,
+        routing=routing,
+        llm_orchestrator=llm_orchestrator,
+        model=model,
+        orchestrator_model=orchestrator_model,
+        cwd=cwd,
+        max_review_rounds=max_review_rounds,
+        max_stage_runs=max_stage_runs,
     )
 
-    state = asyncio.run(run_pipeline(task, config))
+    state = asyncio.run(run_pipeline(text, config))
 
-    if args.show:
+    if show:
         for stage in WORK_STAGES:
             artifact = state.get(ARTIFACT_KEY[stage], "")
             if artifact:
-                print(f"\n{'=' * 70}\n{stage.value.upper()}\n{'=' * 70}\n{artifact}")
-        print()
+                typer.echo(
+                    f"\n{'=' * 70}\n{stage.value.upper()}\n{'=' * 70}\n{artifact}"
+                )
+        typer.echo()
 
-    print(summarize(state))
-    return 0
+    typer.echo(summarize(state))
+
+
+def main() -> None:
+    """Console-script entry point."""
+    app()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

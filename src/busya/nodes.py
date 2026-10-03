@@ -52,9 +52,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
         result = await run_assistant(
             AssistantSpec(
                 system_prompt=SYSTEM_PROMPTS[stage],
-                prompt=stage_prompt(
-                    stage, context_block(state, exclude=stage), handoff_hint=hint
-                ),
+                prompt=stage_prompt(stage, context_block(state, exclude=stage), handoff_hint=hint),
                 tools=tools,
                 mcp_servers=mcp_servers,
                 model=config.model,
@@ -90,9 +88,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
     return node
 
 
-def _self_route(
-    stage: Stage, state: PipelineState, slot: HandoffSlot, config: PipelineConfig
-) -> str:
+def _self_route(stage: Stage, state: PipelineState, slot: HandoffSlot, config: PipelineConfig) -> str:
     """Turn the assistant's own handoff call into a graph destination."""
     if len(state.get("history", [])) + 1 >= config.max_stage_runs:
         logger.warning("stage-run cap reached after %s; stopping", stage.value)

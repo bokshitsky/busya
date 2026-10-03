@@ -30,9 +30,7 @@ def build_graph(config: PipelineConfig | None = None) -> Pipeline:
       carrying the target its own assistant chose via the handoff tool.
     """
     config = config or PipelineConfig()
-    builder = StateGraph[PipelineState, None, PipelineState, PipelineState](
-        PipelineState
-    )
+    builder = StateGraph[PipelineState, None, PipelineState, PipelineState](PipelineState)
 
     self_routing = config.routing is RoutingMode.ASSISTANT
     for stage in WORK_STAGES:
@@ -49,19 +47,13 @@ def build_graph(config: PipelineConfig | None = None) -> Pipeline:
     if not self_routing:
         orchestrator = build_orchestrator(config)
         for stage in WORK_STAGES:
-            edges: dict[Hashable, str] = {
-                key: value for key, value in _destinations(stage).items()
-            }
-            builder.add_conditional_edges(
-                stage.value, _build_router(stage, config, orchestrator), edges
-            )
+            edges: dict[Hashable, str] = {key: value for key, value in _destinations(stage).items()}
+            builder.add_conditional_edges(stage.value, _build_router(stage, config, orchestrator), edges)
 
     return builder.compile()
 
 
-def _build_router(
-    stage: Stage, config: PipelineConfig, orchestrator: Orchestrator
-) -> Router:
+def _build_router(stage: Stage, config: PipelineConfig, orchestrator: Orchestrator) -> Router:
     """Ask the orchestrator where to go after `stage`."""
 
     async def router(state: PipelineState) -> str:
@@ -78,10 +70,6 @@ def _build_router(
 
 def _destinations(stage: Stage) -> dict[str, str]:
     """Where `stage` is allowed to send control, as a LangGraph edge mapping."""
-    mapping = {
-        target.value: target.value
-        for target in ALLOWED_TARGETS[stage]
-        if target is not Stage.DONE
-    }
+    mapping = {target.value: target.value for target in ALLOWED_TARGETS[stage] if target is not Stage.DONE}
     mapping[END] = END
     return mapping

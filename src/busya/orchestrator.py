@@ -41,9 +41,7 @@ class RulesOrchestrator:
         if verdict == _APPROVED:
             return Stage.DONE
         if rounds >= self._config.max_review_rounds:
-            logger.warning(
-                "review still wants changes after %d round(s); finishing anyway", rounds
-            )
+            logger.warning("review still wants changes after %d round(s); finishing anyway", rounds)
             return Stage.DONE
         return Stage.CODING
 
@@ -84,20 +82,14 @@ class LLMOrchestrator:
 
         chosen = _match_stage(result.text, targets)
         if chosen is None:
-            logger.warning(
-                "orchestrator returned %r, falling back to rules", result.text[:80]
-            )
+            logger.warning("orchestrator returned %r, falling back to rules", result.text[:80])
             return await self._fallback.next_stage(state, finished)
         logger.info("orchestrator chose %s after %s", chosen.value, finished.value)
         return chosen
 
 
 def build_orchestrator(config: PipelineConfig) -> Orchestrator:
-    return (
-        LLMOrchestrator(config)
-        if config.llm_orchestrator
-        else RulesOrchestrator(config)
-    )
+    return LLMOrchestrator(config) if config.llm_orchestrator else RulesOrchestrator(config)
 
 
 def read_verdict(review: str) -> str:

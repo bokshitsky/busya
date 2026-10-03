@@ -10,9 +10,7 @@ from .graph import build_graph
 from .state import PipelineState
 
 
-async def run_pipeline(
-    task: str, config: PipelineConfig | None = None
-) -> PipelineState:
+async def run_pipeline(task: str, config: PipelineConfig | None = None) -> PipelineState:
     """Run all four stages on `task` and return the final state."""
     config = config or PipelineConfig()
     if config.cwd is None:
@@ -20,9 +18,7 @@ async def run_pipeline(
     graph = build_graph(config)
     initial: PipelineState = {"task": task, "history": []}
     # recursion_limit bounds graph steps; stage runs are capped separately.
-    final = await graph.ainvoke(
-        initial, config={"recursion_limit": config.max_stage_runs * 2 + 4}
-    )
+    final = await graph.ainvoke(initial, config={"recursion_limit": config.max_stage_runs * 2 + 4})
     return cast(PipelineState, final)
 
 
@@ -35,9 +31,6 @@ def summarize(state: PipelineState) -> str:
         total += record.cost_usd or 0.0
         handoff = f" -> {record.handoff.target.value}" if record.handoff else ""
         flag = " [error]" if record.is_error else ""
-        lines.append(
-            f"{index}. {record.stage.value}{handoff}: "
-            f"{record.num_turns} turns, {cost}{flag}"
-        )
+        lines.append(f"{index}. {record.stage.value}{handoff}: {record.num_turns} turns, {cost}{flag}")
     lines.append(f"total: ${total:.4f}")
     return "\n".join(lines)

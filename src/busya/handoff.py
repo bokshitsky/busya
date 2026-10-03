@@ -24,9 +24,7 @@ class HandoffSlot:
     request: HandoffRequest | None = None
 
 
-def build_handoff_server(
-    source: Stage, slot: HandoffSlot
-) -> tuple[McpSdkServerConfig, str]:
+def build_handoff_server(source: Stage, slot: HandoffSlot) -> tuple[McpSdkServerConfig, str]:
     """Build an in-process MCP server exposing `handoff` for one stage run."""
     targets = ALLOWED_TARGETS[source]
     target_list = ", ".join(t.value for t in targets)
@@ -45,16 +43,9 @@ def build_handoff_server(
         except ValueError:
             return _error(f"Unknown target {raw!r}. Valid targets: {target_list}.")
         if target not in targets:
-            return _error(
-                f"{source.value} cannot hand off to {target.value}. "
-                f"Valid targets: {target_list}."
-            )
+            return _error(f"{source.value} cannot hand off to {target.value}. Valid targets: {target_list}.")
         slot.request = HandoffRequest(source=source, target=target, reason=reason)
-        return {
-            "content": [
-                {"type": "text", "text": f"Handoff to {target.value} recorded."}
-            ]
-        }
+        return {"content": [{"type": "text", "text": f"Handoff to {target.value} recorded."}]}
 
     return create_sdk_mcp_server(SERVER_NAME, tools=[handoff]), TOOL_NAME
 

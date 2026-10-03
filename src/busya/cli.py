@@ -16,28 +16,17 @@ from .state import ARTIFACT_KEY, WORK_STAGES
 
 app = typer.Typer(
     add_completion=False,
-    help="Four-stage coding agent on LangGraph: "
-    "requirements, planning, coding, review.",
+    help="Four-stage coding agent on LangGraph: requirements, planning, coding, review.",
 )
 
 
 @app.command()
 def run(
-    task: Annotated[
-        str | None, typer.Argument(help="What to build. Omit to read it from stdin.")
-    ] = None,
-    routing: Annotated[
-        RoutingMode, typer.Option(help="Who picks the next stage.")
-    ] = RoutingMode.ORCHESTRATOR,
-    llm_orchestrator: Annotated[
-        bool, typer.Option(help="Let an assistant make the orchestrator's decisions.")
-    ] = False,
-    model: Annotated[
-        str | None, typer.Option(help="Model for the stage assistants.")
-    ] = None,
-    orchestrator_model: Annotated[
-        str | None, typer.Option(help="Model for the LLM orchestrator.")
-    ] = None,
+    task: Annotated[str | None, typer.Argument(help="What to build. Omit to read it from stdin.")] = None,
+    routing: Annotated[RoutingMode, typer.Option(help="Who picks the next stage.")] = RoutingMode.ORCHESTRATOR,
+    llm_orchestrator: Annotated[bool, typer.Option(help="Let an assistant make the orchestrator's decisions.")] = False,
+    model: Annotated[str | None, typer.Option(help="Model for the stage assistants.")] = None,
+    orchestrator_model: Annotated[str | None, typer.Option(help="Model for the LLM orchestrator.")] = None,
     cwd: Annotated[
         Path | None,
         typer.Option(
@@ -51,15 +40,9 @@ def run(
         int,
         typer.Option(min=1, help="Coding/review loops before finishing anyway."),
     ] = 2,
-    max_stage_runs: Annotated[
-        int, typer.Option(min=1, help="Hard cap on total stage runs.")
-    ] = 12,
-    show: Annotated[
-        bool, typer.Option(help="Print every stage artifact, not just the summary.")
-    ] = False,
-    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Debug logging.")] = (
-        False
-    ),
+    max_stage_runs: Annotated[int, typer.Option(min=1, help="Hard cap on total stage runs.")] = 12,
+    show: Annotated[bool, typer.Option(help="Print every stage artifact, not just the summary.")] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Debug logging.")] = False,
 ) -> None:
     """Run the pipeline on a task."""
     text = task if task is not None else sys.stdin.read()
@@ -88,9 +71,7 @@ def run(
         for stage in WORK_STAGES:
             artifact = state.get(ARTIFACT_KEY[stage], "")
             if artifact:
-                typer.echo(
-                    f"\n{'=' * 70}\n{stage.value.upper()}\n{'=' * 70}\n{artifact}"
-                )
+                typer.echo(f"\n{'=' * 70}\n{stage.value.upper()}\n{'=' * 70}\n{artifact}")
         typer.echo()
 
     typer.echo(summarize(state))

@@ -10,7 +10,6 @@ from pathlib import Path
 from .assistant import AssistantSpec, run_assistant
 from .config import STAGE_TOOLS
 from .prompts import REVIEW_ONLY_SYSTEM_PROMPT, review_only_prompt
-from .review_instructions import load_review_instructions
 from .review_tool import SERVER_NAME, ReviewCommentSlot, build_review_comment_server
 from .state import ReviewComment, Stage
 
@@ -30,14 +29,18 @@ async def run_review_only(
     cwd: Path,
     compare_base: str,
     compare_update: str,
-    review_instructions: list[Path],
+    review_instructions: str,
     model: str | None,
     max_turns: int,
 ) -> ReviewOnlyResult:
-    """Diff `compare_base` against `compare_update` in `cwd` and review it."""
+    """Diff `compare_base` against `compare_update` in `cwd` and review it.
+
+    `review_instructions` is already resolved to prompt text (e.g. by
+    `review_instructions.load_review_instructions`) — this function doesn't
+    care where it came from.
+    """
     diff = _git_diff(cwd, compare_base, compare_update)
-    instructions = load_review_instructions(review_instructions)
-    prompt = review_only_prompt(compare_base, compare_update, diff, instructions)
+    prompt = review_only_prompt(compare_base, compare_update, diff, review_instructions)
 
     tools = [*STAGE_TOOLS[Stage.REVIEW]]
     slot = ReviewCommentSlot()

@@ -12,6 +12,7 @@ from typing import Annotated
 import typer
 
 from .config import PipelineConfig
+from .review_instructions import load_review_instructions
 from .review_only import run_review_only
 from .runner import run_pipeline, summarize
 from .state import ARTIFACT_KEY, WORK_STAGES
@@ -69,7 +70,7 @@ def run(
         model=model,
         orchestrator_model=orchestrator_model,
         cwd=cwd if cwd is not None else Path.cwd(),
-        review_instructions=review_instruction or [],
+        review_instructions=load_review_instructions(review_instruction or []),
         max_review_rounds=max_review_rounds,
         max_stage_runs=max_stage_runs,
     )
@@ -119,7 +120,7 @@ def review(
             cwd=cwd if cwd is not None else Path.cwd(),
             compare_base=compare_base,
             compare_update=compare_update,
-            review_instructions=review_instruction or [],
+            review_instructions=load_review_instructions(review_instruction or []),
             model=model,
             max_turns=max_turns,
         )

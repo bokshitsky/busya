@@ -114,6 +114,25 @@ _STAGE_ASK: dict[Stage, str] = {
 }
 
 
+def review_instructions_block(raw: str) -> str:
+    """Frame raw reviewer-focus text for the review stage itself."""
+    if not raw:
+        return ""
+    guidance = "Treat these as extra focus areas on top of your own judgment, not a replacement for it."
+    return f"# Review instructions\n{guidance}\n\n{raw}"
+
+
+def reviewer_focus_block(raw: str) -> str:
+    """Frame raw reviewer-focus text for the coding stage, so it can address it upfront."""
+    if not raw:
+        return ""
+    guidance = (
+        "The review stage will pay particular attention to these areas. Account for them "
+        "while implementing, on top of your own judgment."
+    )
+    return f"# What the reviewer will focus on\n{guidance}\n\n{raw}"
+
+
 def stage_prompt(stage: Stage, context: str, *, handoff_hint: str, extra: str = "") -> str:
     """Build the user-turn prompt for one stage run."""
     parts = [context]

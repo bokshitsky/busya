@@ -6,7 +6,12 @@ from pathlib import Path
 
 
 def load_review_instructions(paths: list[Path]) -> str:
-    """Read every path, expanding directories into their files, and join as prompt text."""
+    """Read every path, expanding directories into their files, and join their raw text.
+
+    The result is unframed — callers decide how to present it to whichever
+    stage receives it (see `prompts.review_instructions_block` and
+    `prompts.reviewer_focus_block`).
+    """
     sections = []
     for path in paths:
         for file in _files(path):
@@ -16,10 +21,7 @@ def load_review_instructions(paths: list[Path]) -> str:
                 continue
             if text:
                 sections.append(f"## {file}\n{text}")
-    if not sections:
-        return ""
-    guidance = "Treat these as extra focus areas on top of your own judgment, not a replacement for it."
-    return f"# Review instructions\n{guidance}\n\n" + "\n\n".join(sections)
+    return "\n\n".join(sections)
 
 
 def _files(path: Path) -> list[Path]:

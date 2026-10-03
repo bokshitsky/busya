@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from claude_agent_sdk import (
     AssistantMessage,
@@ -45,6 +46,8 @@ class AssistantResult:
     tool_calls: list[str]
     num_turns: int
     cost_usd: float | None
+    #: Raw usage dict from the CLI (input/output/cache token counts).
+    usage: dict[str, Any] | None
     is_error: bool
     terminal_reason: str | None
 
@@ -88,6 +91,7 @@ async def run_assistant(spec: AssistantSpec) -> AssistantResult:
         tool_calls=tool_calls,
         num_turns=result.num_turns if result else 0,
         cost_usd=result.total_cost_usd if result else None,
+        usage=result.usage if result else None,
         is_error=bool(result and result.is_error),
         terminal_reason=result.terminal_reason if result else None,
     )

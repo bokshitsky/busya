@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from .config import PipelineConfig
 from .graph import build_graph
@@ -18,15 +18,31 @@ async def run_pipeline(task: str, config: PipelineConfig) -> PipelineState:
     return cast(PipelineState, final)
 
 
+#: Usage dict keys that count as consumed tokens.
+_TOKEN_KEYS = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+
+
+def _tokens(usage: dict[str, Any] | None) -> int:
+    """Total tokens (input + output + cache) a usage dict accounts for."""
+    if not usage:
+        return 0
+    return sum(int(usage.get(key) or 0) for key in _TOKEN_KEYS)
+
+
 def summarize(state: PipelineState) -> str:
-    """One line per stage run, plus the total cost."""
+    """One line per stage run, plus the total cost and tokens."""
     lines = []
-    total = 0.0
+    total_cost = 0.0
+    total_tokens = 0
     for index, record in enumerate(state.get("history", []), start=1):
         cost = f"${record.cost_usd:.4f}" if record.cost_usd is not None else "n/a"
-        total += record.cost_usd or 0.0
+        tokens = _tokens(record.usage)
+        total_cost += record.cost_usd or 0.0
+        total_tokens += tokens
         handoff = f" -> {record.handoff.target.value}" if record.handoff else ""
         flag = " [error]" if record.is_error else ""
-        lines.append(f"{index}. {record.stage.value}{handoff}: {record.num_turns} turns, {cost}{flag}")
-    lines.append(f"total: ${total:.4f}")
+        lines.append(
+            f"{index}. {record.stage.value}{handoff}: {record.num_turns} turns, {cost}, {tokens} tokens{flag}"
+        )
+    lines.append(f"total: ${total_cost:.4f}, {total_tokens} tokens")
     return "\n".join(lines)

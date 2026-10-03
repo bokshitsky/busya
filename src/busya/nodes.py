@@ -71,6 +71,7 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
             handoff=slot.request,
             num_turns=result.num_turns,
             cost_usd=result.cost_usd,
+            usage=result.usage,
             is_error=result.is_error,
         )
         update: PipelineState = {"history": [record], "handoff": slot.request}

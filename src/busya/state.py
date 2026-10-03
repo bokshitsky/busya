@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
 
 class Stage(StrEnum):
@@ -61,6 +61,8 @@ class StageRecord:
     handoff: HandoffRequest | None
     num_turns: int
     cost_usd: float | None
+    #: Raw usage dict from the CLI (input/output/cache token counts).
+    usage: dict[str, Any] | None
     is_error: bool
 
 

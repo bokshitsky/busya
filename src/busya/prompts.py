@@ -74,9 +74,7 @@ severity and your confidence, and let the next stage filter. Do not edit code.
 
 For every issue, call the `add_comment` tool once with the file, the line, and
 what would fix it — in addition to writing it up below. Call it once per issue;
-do not bundle several into one call. If a "# Review instructions" section
-appears in your context, treat it as extra focus areas on top of your own
-judgment, not a replacement for it.
+do not bundle several into one call.
 
 Produce:
 - Verdict: one line, either APPROVED or CHANGES REQUESTED.
@@ -93,8 +91,7 @@ SYSTEM_PROMPTS: dict[Stage, str] = {
 
 REVIEW_ONLY_SYSTEM_PROMPT = """You are a senior code reviewer, working alone — there is no requirements
 or planning stage before you and no coding stage after you to pick up your
-findings in prose. You are given a diff between two git refs in a
-repository.
+findings in prose. You are given a diff between two git refs in a repository.
 
 Read the changed files yourself, not just the diff, and run whatever
 verification you can (tests, linters, whatever commands the codebase already
@@ -103,9 +100,7 @@ surrounding code's own conventions.
 
 For every issue you find, call the `add_comment` tool once with the file, the
 line, and what needs to change. Call it once per issue — do not bundle several
-into one call. If a "# Review instructions" section appears in your context,
-treat it as extra focus areas on top of your own judgment, not a replacement
-for it.
+into one call.
 
 End with a short written summary: your overall verdict and the headline
 issues, in a few sentences. That summary is the only thing returned besides

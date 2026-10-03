@@ -18,7 +18,8 @@ def load_review_instructions(paths: list[Path]) -> str:
                 sections.append(f"## {file}\n{text}")
     if not sections:
         return ""
-    return "# Review instructions\n" + "\n\n".join(sections)
+    guidance = "Treat these as extra focus areas on top of your own judgment, not a replacement for it."
+    return f"# Review instructions\n{guidance}\n\n" + "\n\n".join(sections)
 
 
 def _files(path: Path) -> list[Path]:

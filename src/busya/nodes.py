@@ -14,6 +14,9 @@ from .assistant import AssistantSpec, run_assistant
 from .config import PipelineConfig
 from .handoff import SERVER_NAME, HandoffSlot, build_handoff_server, handoff_hint
 from .prompts import SYSTEM_PROMPTS, stage_prompt
+from .review_instructions import load_review_instructions
+from .review_tool import SERVER_NAME as REVIEW_SERVER_NAME
+from .review_tool import ReviewCommentSlot, build_review_comment_server
 from .state import ARTIFACT_KEY, PipelineState, Stage, StageRecord, context_block
 
 logger = logging.getLogger(__name__)
@@ -43,11 +46,22 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
         mcp_servers: dict[str, McpServerConfig] = {SERVER_NAME: server}
         tools.append(tool_name)
 
+        comment_slot: ReviewCommentSlot | None = None
+        extra = ""
+        if stage is Stage.REVIEW:
+            comment_slot = ReviewCommentSlot()
+            comment_server, comment_tool = build_review_comment_server(comment_slot)
+            mcp_servers[REVIEW_SERVER_NAME] = comment_server
+            tools.append(comment_tool)
+            extra = load_review_instructions(config.review_instructions)
+
         logger.info("stage %s: starting", stage.value)
         result = await run_assistant(
             AssistantSpec(
                 system_prompt=SYSTEM_PROMPTS[stage],
-                prompt=stage_prompt(stage, context_block(state, exclude=stage), handoff_hint=handoff_hint(stage)),
+                prompt=stage_prompt(
+                    stage, context_block(state, exclude=stage), handoff_hint=handoff_hint(stage), extra=extra
+                ),
                 tools=tools,
                 mcp_servers=mcp_servers,
                 model=config.model,
@@ -76,6 +90,8 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
         )
         update: PipelineState = {"history": [record], "handoff": slot.request}
         update[ARTIFACT_KEY[stage]] = result.text  # type: ignore[literal-required]
+        if comment_slot is not None:
+            update["review_comments"] = comment_slot.comments
 
         if slot.request is None:
             return update

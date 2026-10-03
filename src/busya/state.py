@@ -57,10 +57,11 @@ class StageRecord:
 
     stage: Stage
     output: str
-    handoff: HandoffRequest | None = None
-    num_turns: int = 0
-    cost_usd: float | None = None
-    is_error: bool = False
+    #: Set only when the stage routed itself via the handoff tool.
+    handoff: HandoffRequest | None
+    num_turns: int
+    cost_usd: float | None
+    is_error: bool
 
 
 class PipelineState(TypedDict, total=False):

@@ -19,7 +19,7 @@ Router = Callable[[PipelineState], Awaitable[str]]
 Pipeline = CompiledStateGraph[PipelineState, None, PipelineState, PipelineState]
 
 
-def build_graph(config: PipelineConfig | None = None) -> Pipeline:
+def build_graph(config: PipelineConfig) -> Pipeline:
     """Compile the pipeline.
 
     The two routing modes produce structurally different graphs:
@@ -29,7 +29,6 @@ def build_graph(config: PipelineConfig | None = None) -> Pipeline:
     - `assistant`: stages have no outgoing edges — each one returns a `Command`
       carrying the target its own assistant chose via the handoff tool.
     """
-    config = config or PipelineConfig()
     builder = StateGraph[PipelineState, None, PipelineState, PipelineState](PipelineState)
 
     self_routing = config.routing is RoutingMode.ASSISTANT

@@ -10,9 +10,8 @@ from .graph import build_graph
 from .state import PipelineState
 
 
-async def run_pipeline(task: str, config: PipelineConfig | None = None) -> PipelineState:
+async def run_pipeline(task: str, config: PipelineConfig) -> PipelineState:
     """Run all four stages on `task` and return the final state."""
-    config = config or PipelineConfig()
     if config.cwd is None:
         config.cwd = Path.cwd()
     graph = build_graph(config)

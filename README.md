@@ -39,14 +39,25 @@ CLI на [typer](https://typer.tiangolo.com/), булевы флаги имею�
 Из кода:
 
 ```python
-from busya import PipelineConfig, RoutingMode, run_pipeline, summarize
+from busya.config import PipelineConfig, RoutingMode
+from busya.runner import run_pipeline, summarize
 
-state = await run_pipeline(
-    "Добавь ручку /health", PipelineConfig(routing=RoutingMode.ASSISTANT)
+config = PipelineConfig(
+    routing=RoutingMode.ASSISTANT,
+    model=None,
+    orchestrator_model=None,
+    llm_orchestrator=False,
+    cwd=None,
+    max_review_rounds=2,
+    max_stage_runs=12,
 )
+state = await run_pipeline("Добавь ручку /health", config)
 print(state["review"])
 print(summarize(state))
 ```
+
+`PipelineConfig` требует все поля, кроме `max_turns` и `permission_mode`:
+значения по умолчанию живут в CLI, чтобы не задавать их в двух местах.
 
 ## Два способа перехода между этапами
 

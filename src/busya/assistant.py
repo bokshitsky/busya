@@ -24,9 +24,10 @@ class AssistantSpec:
     system_prompt: str
     prompt: str
     tools: list[str]
+    #: None uses the CLI's own default model.
+    model: str | None
+    max_turns: int
     mcp_servers: dict[str, McpServerConfig] = field(default_factory=dict)
-    model: str | None = None
-    max_turns: int = 40
     cwd: Path | None = None
     permission_mode: PermissionMode = "acceptEdits"
 
@@ -36,11 +37,11 @@ class AssistantResult:
     """What one assistant run produced."""
 
     text: str
-    tool_calls: list[str] = field(default_factory=list)
-    num_turns: int = 0
-    cost_usd: float | None = None
-    is_error: bool = False
-    terminal_reason: str | None = None
+    tool_calls: list[str]
+    num_turns: int
+    cost_usd: float | None
+    is_error: bool
+    terminal_reason: str | None
 
 
 async def run_assistant(spec: AssistantSpec) -> AssistantResult:

@@ -52,6 +52,15 @@ class HandoffRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class ReviewComment:
+    """One reviewer finding, pinned to a file and line."""
+
+    file: str
+    line: int
+    comment: str
+
+
+@dataclass(frozen=True, slots=True)
 class StageRecord:
     """What one stage run produced."""
 
@@ -77,6 +86,8 @@ class PipelineState(TypedDict, total=False):
     #: Set by the handoff tool when a stage routes itself; cleared on read.
     handoff: HandoffRequest | None
     history: Annotated[list[StageRecord], operator.add]
+    #: Structured findings from the review stage's `add_comment` tool.
+    review_comments: list[ReviewComment]
 
 
 def visit_count(state: PipelineState, stage: Stage) -> int:

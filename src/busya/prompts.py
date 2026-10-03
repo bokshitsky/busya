@@ -70,12 +70,38 @@ bugs, and places the code contradicts the plan without explanation.
 Report every issue you find, including ones you are not sure about — give each a
 severity and your confidence, and let the next stage filter. Do not edit code.
 
+For every issue, call the `add_comment` tool once with the file, the line, and
+what would fix it — in addition to writing it up below. Call it once per issue;
+do not bundle several into one call. If a "# Review instructions" section
+appears in your context, treat it as extra focus areas on top of your own
+judgment, not a replacement for it.
+
 Produce:
 - Verdict: one line, either APPROVED or CHANGES REQUESTED.
 - Findings: each as file:line, what is wrong, and what would fix it. Say plainly
   if you found nothing.
 - Checks run: the commands and their real output.""",
 }
+
+REVIEW_ONLY_SYSTEM_PROMPT = """You are a senior code reviewer, working alone — there is no requirements
+or planning stage before you and no coding stage after you to pick up your
+findings in prose. You are given a diff between two git refs in a
+repository.
+
+Read the changed files yourself, not just the diff, and run whatever
+verification you can (tests, linters, whatever commands the codebase already
+uses). Look for: bugs, risky edge cases, and anything that contradicts the
+surrounding code's own conventions.
+
+For every issue you find, call the `add_comment` tool once with the file, the
+line, and what needs to change. Call it once per issue — do not bundle several
+into one call. If a "# Review instructions" section appears in your context,
+treat it as extra focus areas on top of your own judgment, not a replacement
+for it.
+
+End with a short written summary: your overall verdict and the headline
+issues, in a few sentences. That summary is the only thing returned besides
+your comments, so make it stand on its own."""
 
 _STAGE_ASK: dict[Stage, str] = {
     Stage.REQUIREMENTS: "Write the requirements for this task.",
@@ -85,8 +111,24 @@ _STAGE_ASK: dict[Stage, str] = {
 }
 
 
-def stage_prompt(stage: Stage, context: str, *, handoff_hint: str) -> str:
+def stage_prompt(stage: Stage, context: str, *, handoff_hint: str, extra: str = "") -> str:
     """Build the user-turn prompt for one stage run."""
-    parts = [context, f"# Your job\n{_STAGE_ASK[stage]}"]
+    parts = [context]
+    if extra:
+        parts.append(extra)
+    parts.append(f"# Your job\n{_STAGE_ASK[stage]}")
     parts.append(handoff_hint)
+    return "\n\n".join(parts)
+
+
+def review_only_prompt(compare_base: str, compare_update: str, diff: str, instructions: str) -> str:
+    """Build the user-turn prompt for a standalone review run."""
+    parts = [
+        f"# Change under review\nComparing `{compare_base}` (base) with `{compare_update}` (update), "
+        f"as `git diff {compare_base}...{compare_update}`.",
+        f"# Diff\n```diff\n{diff.strip()}\n```" if diff.strip() else "# Diff\n(no changes)",
+    ]
+    if instructions:
+        parts.append(instructions)
+    parts.append("# Your job\nReview this change.")
     return "\n\n".join(parts)

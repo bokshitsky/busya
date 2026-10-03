@@ -36,6 +36,8 @@ class PipelineConfig:
     max_review_rounds: int
     #: Hard cap on total stage runs, so a bad handoff cannot loop forever.
     max_stage_runs: int
+    #: Files or folders telling the review stage what to focus on.
+    review_instructions: list[Path] = field(default_factory=list)
     max_turns: dict[Stage, int] = field(
         default_factory=lambda: {
             Stage.REQUIREMENTS: 25,

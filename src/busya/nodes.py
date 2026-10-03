@@ -102,7 +102,6 @@ def build_stage_node(stage: Stage, config: PipelineConfig) -> StageNode:
 
 def _self_route(stage: Stage, state: PipelineState, slot: HandoffSlot, config: PipelineConfig) -> str:
     """Turn the assistant's own handoff call into a graph destination."""
-    assert slot.request is not None
     if len(state.get("history", [])) + 1 >= config.max_stage_runs:
         logger.warning("stage-run cap reached after %s; stopping", stage.value)
         return END

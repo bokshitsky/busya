@@ -17,20 +17,66 @@ uv sync
 
 ## Запуск
 
+У CLI две команды: `run` — весь четырёхэтапный пайплайн, `review` —
+только ревью, без требований/плана/кода (например, для CI).
+
 ```sh
-uv run busya "Добавь ручку /health в сервис"
+uv run busya run "Добавь ручку /health в сервис"
 
 # работать в другой директории и печатать все артефакты
-uv run busya --cwd ../myproject --show "Перепиши парсер конфига"
+uv run busya run --cwd ../myproject --show "Перепиши парсер конфига"
 
 # задачу можно подать на stdin
-cat task.md | uv run busya
+cat task.md | uv run busya run
 ```
 
-Полезные флаги: `--model`, `--llm-orchestrator`, `--max-review-rounds`,
-`--max-stage-runs`, `-v`. Весь список — `uv run busya --help`.
-CLI на [typer](https://typer.tiangolo.com/), булевы флаги имеют парные
-`--no-*` формы.
+Полезные флаги `run`: `--model`, `--llm-orchestrator`, `--max-review-rounds`,
+`--max-stage-runs`, `--review-instruction`, `-v`. Весь список —
+`uv run busya run --help`. CLI на [typer](https://typer.tiangolo.com/),
+булевы флаги имеют парные `--no-*` формы.
+
+## На что обращать внимание при ревью
+
+`--review-instruction` (можно повторять) добавляет в промпт ревью-этапа блок
+`# Review instructions` с текстом из указанных файлов. Можно передать и папку
+целиком — тогда берутся все файлы под ней рекурсивно (скрытые файлы и папки
+пропускаются). Флаг работает и у `run`, и у `review`:
+
+```sh
+uv run busya run --review-instruction docs/security-checklist.md "..."
+uv run busya review --review-instruction docs/review-focus/
+```
+
+## Структурированные комментарии ревью
+
+Ревью-этапу (в обоих режимах) доступен тул `add_comment(file, line, comment)` —
+он вызывает его один раз на каждую найденную проблему, вдобавок к текстовому
+отчёту. В `run` эти комментарии попадают в `state.review_comments` и печатаются
+построчно вместе с `--show`; в `review` — это и есть содержимое `comments` в
+JSON-выводе.
+
+## Ревью без пайплайна (`review`)
+
+```sh
+uv run busya review --compare-base master --compare-update HEAD --cwd ../myproject
+```
+
+Делает `git diff <compare-base>...<compare-update>` в указанном репозитории
+(`--cwd`, по умолчанию текущая директория), прогоняет через него один
+ассистент-ревьюер (с `Read`, `Glob`, `Grep`, `Bash` и тулом `add_comment`) и
+печатает в stdout JSON:
+
+```json
+{
+  "summary": "общий вывод ревьюера, в несколько предложений",
+  "comments": [
+    {"file": "src/foo.py", "line": 42, "comment": "что здесь не так и как исправить"}
+  ]
+}
+```
+
+`--compare-base` по умолчанию `master`, `--compare-update` — `HEAD`. Поддерживает
+те же `--review-instruction`, `--model`, `-v`, плюс `--max-turns` (по умолчанию 30).
 
 ## Переход между этапами
 
@@ -80,7 +126,7 @@ CLI на [typer](https://typer.tiangolo.com/), булевы флаги имею�
 | requirements | Read, Glob, Grep |
 | planning | Read, Glob, Grep |
 | coding | Read, Glob, Grep, Write, Edit, Bash, TodoWrite |
-| review | Read, Glob, Grep, Bash |
+| review | Read, Glob, Grep, Bash, add_comment |
 
 ## Структура
 
@@ -90,11 +136,14 @@ CLI на [typer](https://typer.tiangolo.com/), булевы флаги имею�
 | `prompts.py` | системные промпты этапов |
 | `assistant.py` | запуск одного ассистента через `ClaudeSDKClient` |
 | `handoff.py` | in-process MCP-сервер с тулом `handoff` |
+| `review_tool.py` | in-process MCP-сервер с тулом `add_comment` |
+| `review_instructions.py` | чтение `--review-instruction` (файлы и папки) в текст промпта |
+| `review_only.py` | режим `review`: git diff + один прогон ревьюера, без графа |
 | `nodes.py` | ноды этапов |
 | `orchestrator.py` | `RulesOrchestrator`, `LLMOrchestrator` |
 | `graph.py` | сборка графа: handoff-тул и оркестратор на каждой ноде |
 | `runner.py` | прогон пайплайна и сводка по стоимости |
-| `cli.py` | typer-приложение |
+| `cli.py` | typer-приложение: команды `run` и `review` |
 
 ## Ограничители
 

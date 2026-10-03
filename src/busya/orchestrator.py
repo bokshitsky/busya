@@ -7,6 +7,7 @@ from typing import Protocol, runtime_checkable
 
 from .assistant import AssistantSpec, run_assistant
 from .config import PipelineConfig
+from .route_tool import SERVER_NAME, RouteSlot, build_route_server
 from .state import ALLOWED_TARGETS, ARTIFACT_KEY, PipelineState, Stage, visit_count
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class RulesOrchestrator:
 
 
 class LLMOrchestrator:
-    """Asks a separate assistant — with no tools — to pick the next stage."""
+    """Asks a separate assistant to pick the next stage via a tool call."""
 
     def __init__(self, config: PipelineConfig) -> None:
         self._config = config
@@ -59,34 +60,36 @@ class LLMOrchestrator:
             return targets[0]
 
         choices = ", ".join(t.value for t in targets)
-        result = await run_assistant(
+        slot = RouteSlot()
+        server, tool_name = build_route_server(targets, slot)
+        await run_assistant(
             AssistantSpec(
                 system_prompt=(
                     "You route a four-stage software pipeline: requirements -> "
                     "planning -> coding -> review. You are given the stage that just "
                     "finished and its output. Decide whether its output is good "
                     "enough to move on, or whether an earlier stage must run again. "
-                    "Answer with one stage name and nothing else."
+                    "Record your choice by calling the `select_next_stage` tool."
                 ),
                 prompt=(
                     f"# Stage that finished\n{finished.value}\n\n"
                     f"# Its output\n{state.get(ARTIFACT_KEY[finished], '')}\n\n"
                     f"# Valid next stages\n{choices}\n\n"
-                    "Reply with exactly one of the valid next stages."
+                    "Call `select_next_stage` with exactly one of the valid next stages."
                 ),
-                tools=[],
+                tools=[tool_name],
+                mcp_servers={SERVER_NAME: server},
                 model=self._config.orchestrator_model or self._config.model,
-                max_turns=1,
+                max_turns=2,
                 label="orchestrator",
             )
         )
 
-        chosen = _match_stage(result.text, targets)
-        if chosen is None:
-            logger.warning("orchestrator returned %r, falling back to rules", result.text[:80])
+        if slot.target is None:
+            logger.warning("orchestrator did not call select_next_stage; falling back to rules")
             return await self._fallback.next_stage(state, finished)
-        logger.info("orchestrator chose %s after %s", chosen.value, finished.value)
-        return chosen
+        logger.info("orchestrator chose %s after %s", slot.target.value, finished.value)
+        return slot.target
 
 
 def build_orchestrator(config: PipelineConfig) -> Orchestrator:
@@ -106,11 +109,3 @@ def read_verdict(review: str) -> str:
         return _CHANGES
     # Both appear (e.g. "APPROVED" in a findings list) — the earlier one is the verdict.
     return _APPROVED if approved_at < changes_at else _CHANGES
-
-
-def _match_stage(text: str, targets: tuple[Stage, ...]) -> Stage | None:
-    lowered = text.strip().lower()
-    for stage in targets:
-        if stage.value in lowered:
-            return stage
-    return None

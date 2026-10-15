@@ -107,6 +107,10 @@ def review(
     ] = None,
     model: Annotated[str | None, typer.Option(help="Model for the reviewer.")] = None,
     max_turns: Annotated[int, typer.Option(min=1, help="Cap on reviewer turns.")] = 30,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Print the prompts the reviewer would get, then stop."),
+    ] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Debug logging.")] = False,
 ) -> None:
     """Review the diff between two git refs; print findings as JSON. No pipeline, just review."""
@@ -123,8 +127,14 @@ def review(
             review_instructions=load_review_instructions(review_instruction or []),
             model=model,
             max_turns=max_turns,
+            dry_run=dry_run,
         )
     )
+
+    if dry_run:
+        typer.echo(f"{'=' * 70}\nSYSTEM PROMPT\n{'=' * 70}\n{result.prompt.system_prompt}")
+        typer.echo(f"\n{'=' * 70}\nUSER PROMPT\n{'=' * 70}\n{result.prompt.prompt}")
+        return
 
     payload = {
         "summary": result.summary,

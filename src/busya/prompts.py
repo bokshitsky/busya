@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from .state import Stage
+
+
+class Language(str, Enum):
+    """ISO-ish code for the language the reviewer should answer in."""
+
+    RU = "RU"
+    EN = "EN"
 
 _SHARED = """You are one stage of a four-stage software pipeline:
 requirements -> planning -> coding -> review.
@@ -89,7 +98,7 @@ SYSTEM_PROMPTS: dict[Stage, str] = {
     Stage.REVIEW: _REVIEW_PROMPT,
 }
 
-REVIEW_ONLY_SYSTEM_PROMPT = """You are a senior code reviewer, working alone — there is no requirements
+_REVIEW_ONLY_SYSTEM_PROMPT_EN = """You are a senior code reviewer, working alone — there is no requirements
 or planning stage before you and no coding stage after you to pick up your
 findings in prose. You are given a diff between two git refs in a repository.
 
@@ -104,7 +113,34 @@ into one call.
 
 End with a short written summary: your overall verdict and the headline
 issues, in a few sentences. That summary is the only thing returned besides
-your comments, so make it stand on its own."""
+your comments, so make it stand on its own.
+
+Write your summary and every comment in English."""
+
+_REVIEW_ONLY_SYSTEM_PROMPT_RU = """Ты — старший ревьюер кода и работаешь в одиночку: перед тобой нет стадий
+сбора требований или планирования, а после тебя нет стадии написания кода,
+которая подхватила бы твои выводы в виде текста. Тебе дают дифф между двумя
+git-ссылками в репозитории.
+
+Читай изменённые файлы сам, а не только дифф, и запускай любую доступную
+проверку (тесты, линтеры, те команды, что уже приняты в проекте). Ищи:
+ошибки, рискованные краевые случаи и всё, что противоречит соглашениям
+окружающего кода.
+
+На каждую найденную проблему один раз вызывай инструмент `add_comment`,
+передавая файл, строку и что нужно изменить. Вызывай его по одному разу на
+проблему — не объединяй несколько проблем в один вызов.
+
+Заверши коротким текстовым резюме: общий вердикт и ключевые проблемы в
+нескольких предложениях. Это резюме — единственное, что возвращается помимо
+твоих комментариев, поэтому оно должно быть самодостаточным.
+
+Пиши резюме и каждый комментарий по-русски."""
+
+_REVIEW_ONLY_SYSTEM_PROMPTS: dict[Language, str] = {
+    Language.EN: _REVIEW_ONLY_SYSTEM_PROMPT_EN,
+    Language.RU: _REVIEW_ONLY_SYSTEM_PROMPT_RU,
+}
 
 _STAGE_ASK: dict[Stage, str] = {
     Stage.REQUIREMENTS: "Write the requirements for this task.",
@@ -122,12 +158,13 @@ def review_instructions_block(raw: str) -> str:
     return f"# Review instructions\n{guidance}\n\n{raw}"
 
 
-def review_only_system_prompt(instructions: str) -> str:
-    """The standalone reviewer's system prompt, with any reviewer-focus instructions appended."""
+def review_only_system_prompt(instructions: str, language: Language) -> str:
+    """The standalone reviewer's system prompt in `language`, with reviewer-focus appended."""
+    parts = [_REVIEW_ONLY_SYSTEM_PROMPTS[language]]
     block = review_instructions_block(instructions)
-    if not block:
-        return REVIEW_ONLY_SYSTEM_PROMPT
-    return f"{REVIEW_ONLY_SYSTEM_PROMPT}\n\n{block}"
+    if block:
+        parts.append(block)
+    return "\n\n".join(parts)
 
 
 def reviewer_focus_block(raw: str) -> str:

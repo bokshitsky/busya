@@ -12,6 +12,7 @@ from typing import Annotated
 import typer
 
 from .config import PipelineConfig
+from .prompts import Language
 from .review_instructions import load_review_instructions
 from .review_only import run_review_only
 from .runner import run_pipeline, summarize
@@ -107,6 +108,10 @@ def review(
     ] = None,
     model: Annotated[str | None, typer.Option(help="Model for the reviewer.")] = None,
     max_turns: Annotated[int, typer.Option(min=1, help="Cap on reviewer turns.")] = 30,
+    language: Annotated[
+        Language,
+        typer.Option("--language", "--lang", help="Language for the reviewer's output."),
+    ] = Language.RU,
     dry_run: Annotated[
         bool,
         typer.Option("--dry-run", help="Print the prompts the reviewer would get, then stop."),
@@ -127,6 +132,7 @@ def review(
             review_instructions=load_review_instructions(review_instruction or []),
             model=model,
             max_turns=max_turns,
+            language=language,
             dry_run=dry_run,
         )
     )

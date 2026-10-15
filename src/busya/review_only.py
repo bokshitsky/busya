@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import logging
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .assistant import AssistantSpec, run_assistant
 from .config import STAGE_TOOLS
-from .prompts import REVIEW_ONLY_SYSTEM_PROMPT, review_instructions_block, review_only_prompt
+from .prompts import review_only_prompt, review_only_system_prompt
 from .review_tool import SERVER_NAME, ReviewCommentSlot, build_review_comment_server
 from .state import ReviewComment, Stage
 
@@ -52,12 +51,16 @@ async def run_review_only(
     `review_instructions` is raw text (e.g. from `review_instructions.load_review_instructions`)
     — this function doesn't care where it came from.
 
+    The reviewer fetches the diff itself via git, so `compare_base`/`compare_update` just
+    name the refs in the prompt.
+
     With `dry_run`, build the prompts and return them without running the reviewer, so
     `summary` and `comments` stay empty.
     """
-    diff = _git_diff(cwd, compare_base, compare_update)
-    user_prompt = review_only_prompt(compare_base, compare_update, diff, review_instructions_block(review_instructions))
-    prompt = ReviewOnlyPrompt(system_prompt=REVIEW_ONLY_SYSTEM_PROMPT, prompt=user_prompt)
+    prompt = ReviewOnlyPrompt(
+        system_prompt=review_only_system_prompt(review_instructions),
+        prompt=review_only_prompt(compare_base, compare_update),
+    )
     if dry_run:
         return ReviewOnlyResult(prompt=prompt)
 
@@ -79,16 +82,3 @@ async def run_review_only(
         )
     )
     return ReviewOnlyResult(prompt=prompt, summary=result.text, comments=slot.comments)
-
-
-def _git_diff(cwd: Path, base: str, update: str) -> str:
-    proc = subprocess.run(
-        ["git", "diff", f"{base}...{update}"],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"git diff {base}...{update} failed: {proc.stderr.strip()}")
-    return proc.stdout

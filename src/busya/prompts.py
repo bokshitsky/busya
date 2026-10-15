@@ -122,6 +122,14 @@ def review_instructions_block(raw: str) -> str:
     return f"# Review instructions\n{guidance}\n\n{raw}"
 
 
+def review_only_system_prompt(instructions: str) -> str:
+    """The standalone reviewer's system prompt, with any reviewer-focus instructions appended."""
+    block = review_instructions_block(instructions)
+    if not block:
+        return REVIEW_ONLY_SYSTEM_PROMPT
+    return f"{REVIEW_ONLY_SYSTEM_PROMPT}\n\n{block}"
+
+
 def reviewer_focus_block(raw: str) -> str:
     """Frame raw reviewer-focus text for the coding stage, so it can address it upfront."""
     if not raw:
@@ -143,14 +151,12 @@ def stage_prompt(stage: Stage, context: str, *, handoff_hint: str, extra: str = 
     return "\n\n".join(parts)
 
 
-def review_only_prompt(compare_base: str, compare_update: str, diff: str, instructions: str) -> str:
+def review_only_prompt(compare_base: str, compare_update: str) -> str:
     """Build the user-turn prompt for a standalone review run."""
     parts = [
-        f"# Change under review\nComparing `{compare_base}` (base) with `{compare_update}` (update), "
-        f"as `git diff {compare_base}...{compare_update}`.",
-        f"# Diff\n```diff\n{diff.strip()}\n```" if diff.strip() else "# Diff\n(no changes)",
+        f"# Change under review\nReview the change between `{compare_base}` (base) and "
+        f"`{compare_update}` (update). Get the diff yourself by running "
+        f"`git diff {compare_base}...{compare_update}`, and read the changed files for full context.",
+        "# Your job\nReview this change.",
     ]
-    if instructions:
-        parts.append(instructions)
-    parts.append("# Your job\nReview this change.")
     return "\n\n".join(parts)

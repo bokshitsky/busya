@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -81,7 +82,7 @@ async def run_assistant(spec: AssistantSpec) -> AssistantResult:
                         logger.info("%s: %s", spec.label, _preview(block.text))
                     elif isinstance(block, ToolUseBlock):
                         tool_calls.append(block.name)
-                        logger.info("%s: tool %s", spec.label, block.name)
+                        logger.info("%s: tool %s", spec.label, _tool_detail(block.name, block.input))
             elif isinstance(message, ResultMessage):
                 result = message
 
@@ -95,6 +96,21 @@ async def run_assistant(spec: AssistantSpec) -> AssistantResult:
         is_error=bool(result and result.is_error),
         terminal_reason=result.terminal_reason if result else None,
     )
+
+
+#: Per-tool arg to headline in the progress log; first match wins.
+_TOOL_HEADLINE = ("command", "file_path", "path", "pattern", "url", "query")
+
+
+def _tool_detail(name: str, tool_input: dict[str, Any]) -> str:
+    """Render a tool call as `name arg` for a progress log — e.g. `Bash git diff ...`."""
+    if not tool_input:
+        return name
+    for key in _TOOL_HEADLINE:
+        value = tool_input.get(key)
+        if value:
+            return f"{name} {_preview(str(value))}"
+    return f"{name} {_preview(json.dumps(tool_input, ensure_ascii=False))}"
 
 
 def _preview(text: str, limit: int = 160) -> str:

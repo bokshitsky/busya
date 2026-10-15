@@ -104,8 +104,7 @@ findings in prose. You are given a diff between two git refs in a repository.
 
 Read the changed files yourself, not just the diff, and run whatever
 verification you can (tests, linters, whatever commands the codebase already
-uses). Look for: bugs, risky edge cases, and anything that contradicts the
-surrounding code's own conventions.
+uses). {scope}
 
 For every issue you find, call the `add_comment` tool once with the file, the
 line, and what needs to change. Call it once per issue — do not bundle several
@@ -123,9 +122,7 @@ _REVIEW_ONLY_SYSTEM_PROMPT_RU = """Ты — старший ревьюер код
 git-ссылками в репозитории.
 
 Читай изменённые файлы сам, а не только дифф, и запускай любую доступную
-проверку (тесты, линтеры, те команды, что уже приняты в проекте). Ищи:
-ошибки, рискованные краевые случаи и всё, что противоречит соглашениям
-окружающего кода.
+проверку (тесты, линтеры, те команды, что уже приняты в проекте). {scope}
 
 На каждую найденную проблему один раз вызывай инструмент `add_comment`,
 передавая файл, строку и что нужно изменить. Вызывай его по одному разу на
@@ -137,9 +134,25 @@ git-ссылками в репозитории.
 
 Пиши резюме и каждый комментарий по-русски."""
 
-_REVIEW_ONLY_SYSTEM_PROMPTS: dict[Language, str] = {
+_REVIEW_ONLY_SYSTEM_PROMPT_TEMPLATES: dict[Language, str] = {
     Language.EN: _REVIEW_ONLY_SYSTEM_PROMPT_EN,
     Language.RU: _REVIEW_ONLY_SYSTEM_PROMPT_RU,
+}
+
+#: The `{scope}` sentence for the base prompt, keyed by (language, only_instructions).
+#: In only-instructions mode it points at the rules instead of naming general concerns,
+#: so no general review guidance reaches the prompt at all.
+_REVIEW_SCOPE: dict[tuple[Language, bool], str] = {
+    (Language.EN, False): (
+        "Look for: bugs, risky edge cases, and anything that contradicts the "
+        "surrounding code's own conventions."
+    ),
+    (Language.EN, True): "Check the change strictly against the review rules given below, and nothing else.",
+    (Language.RU, False): (
+        "Ищи: ошибки, рискованные краевые случаи и всё, что противоречит "
+        "соглашениям окружающего кода."
+    ),
+    (Language.RU, True): "Проверяй изменение строго по правилам ревью, приведённым ниже, и ничего кроме них.",
 }
 
 _STAGE_ASK: dict[Stage, str] = {
@@ -158,12 +171,32 @@ def review_instructions_block(raw: str) -> str:
     return f"# Review instructions\n{guidance}\n\n{raw}"
 
 
-def review_only_system_prompt(instructions: str, language: Language) -> str:
-    """The standalone reviewer's system prompt in `language`, with reviewer-focus appended."""
-    parts = [_REVIEW_ONLY_SYSTEM_PROMPTS[language]]
-    block = review_instructions_block(instructions)
-    if block:
-        parts.append(block)
+_REVIEW_INSTRUCTIONS_HEADER: dict[Language, str] = {
+    Language.EN: "Review instructions",
+    Language.RU: "Правила ревью",
+}
+
+#: Guidance line keyed by (language, only_instructions).
+_REVIEW_INSTRUCTIONS_GUIDANCE: dict[tuple[Language, bool], str] = {
+    (Language.EN, False): "Treat these as extra focus areas on top of your own judgment, not a replacement for it.",
+    (Language.EN, True): "These rules are the full scope of your review — report issues about them and nothing else.",
+    (Language.RU, False): "Считай их дополнительными зонами внимания помимо твоего суждения, а не заменой ему.",
+    (Language.RU, True): "Эти правила — полный объём ревью: сообщай о проблемах по ним и ни о чём больше.",
+}
+
+
+def review_only_system_prompt(instructions: str, language: Language, *, only_instructions: bool = False) -> str:
+    """The standalone reviewer's system prompt in `language`, with reviewer-focus appended.
+
+    With `only_instructions`, the general review guidance is left out of the prompt entirely and
+    the instructions become the whole scope.
+    """
+    scope = _REVIEW_SCOPE[(language, only_instructions)]
+    parts = [_REVIEW_ONLY_SYSTEM_PROMPT_TEMPLATES[language].format(scope=scope)]
+    if instructions:
+        header = _REVIEW_INSTRUCTIONS_HEADER[language]
+        guidance = _REVIEW_INSTRUCTIONS_GUIDANCE[(language, only_instructions)]
+        parts.append(f"# {header}\n{guidance}\n\n{instructions}")
     return "\n\n".join(parts)
 
 

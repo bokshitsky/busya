@@ -112,6 +112,13 @@ def review(
         Language,
         typer.Option("--language", "--lang", help="Language for the reviewer's output."),
     ] = Language.RU,
+    only_instructions: Annotated[
+        bool,
+        typer.Option(
+            "--only-instructions",
+            help="Review only what the review instructions cover, nothing else. Requires --review-instruction.",
+        ),
+    ] = False,
     dry_run: Annotated[
         bool,
         typer.Option("--dry-run", help="Print the prompts the reviewer would get, then stop."),
@@ -124,15 +131,20 @@ def review(
         format="%(levelname)s %(name)s: %(message)s",
     )
 
+    instructions = load_review_instructions(review_instruction or [])
+    if only_instructions and not instructions.strip():
+        raise typer.BadParameter("--only-instructions needs at least one --review-instruction to review against.")
+
     result = asyncio.run(
         run_review_only(
             cwd=cwd if cwd is not None else Path.cwd(),
             compare_base=compare_base,
             compare_update=compare_update,
-            review_instructions=load_review_instructions(review_instruction or []),
+            review_instructions=instructions,
             model=model,
             max_turns=max_turns,
             language=language,
+            only_instructions=only_instructions,
             dry_run=dry_run,
         )
     )

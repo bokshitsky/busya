@@ -45,6 +45,7 @@ async def run_review_only(
     model: str | None,
     max_turns: int,
     language: Language = Language.RU,
+    only_instructions: bool = False,
     dry_run: bool = False,
 ) -> ReviewOnlyResult:
     """Diff `compare_base` against `compare_update` in `cwd` and review it.
@@ -59,7 +60,7 @@ async def run_review_only(
     `summary` and `comments` stay empty.
     """
     prompt = ReviewOnlyPrompt(
-        system_prompt=review_only_system_prompt(review_instructions, language),
+        system_prompt=review_only_system_prompt(review_instructions, language, only_instructions=only_instructions),
         prompt=review_only_prompt(compare_base, compare_update),
     )
     if dry_run:
